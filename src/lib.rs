@@ -1,3 +1,3 @@
 pub mod domains;
-pub mod states;
+pub mod schema;
 pub mod structs;

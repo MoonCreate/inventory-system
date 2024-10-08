@@ -1,106 +1,117 @@
-use actix_web::{delete, get, http, patch, post, web, Responder};
+use actix_web::{delete, error, get, http, patch, post, web, Responder, Result};
 
-use crate::structs::BaseResponse;
-use crate::{states::AppState, structs::User};
+use crate::structs::State;
+use crate::structs::{models, BaseResponse, DbPool};
 
 use super::dtos;
 use super::services;
 
 #[get("/all")]
-pub async fn user_get(data: web::Data<AppState>) -> impl Responder {
-    let users = data.users.lock().unwrap();
-    let collected: Vec<User> = users.iter().map(|x| x.clone()).collect();
+pub async fn user_get(state: web::Data<State>) -> Result<impl Responder> {
+    let mut conn = state.get().await.map_err(error::ErrorInternalServerError)?;
+    let data = services::get_all_user(&mut conn)
+        .await
+        .map_err(error::ErrorInternalServerError)?;
     let code = http::StatusCode::OK;
-    (
+    Ok((
         web::Json(BaseResponse {
-            data: collected,
+            data,
             code: code.as_u16(),
             message: "Success retrieving user".into(),
         }),
         code,
-    )
+    ))
 }
 
 #[get("/{id}")]
-pub async fn user_get_by_id(data: web::Data<AppState>, path: web::Path<(i64,)>) -> impl Responder {
-    let users = data.users.lock().unwrap();
-    let result = services::get_user(&users, path.into_inner().0);
-    let (code, message) = if let Some(_) = result {
-        (http::StatusCode::OK, "Success Retrieving user")
-    } else {
-        (http::StatusCode::BAD_REQUEST, "User not found")
-    };
-    (
+pub async fn user_get_by_id(
+    pool: web::Data<DbPool>,
+    path: web::Path<(i32,)>,
+) -> Result<impl Responder> {
+    let mut conn = pool.get().await.map_err(error::ErrorInternalServerError)?;
+    let data = services::get_user(&mut conn, path.into_inner().0)
+        .await
+        .map_err(error::ErrorInternalServerError)?;
+    let code = http::StatusCode::OK;
+    Ok((
         web::Json(BaseResponse {
-            data: result,
+            data,
             code: code.as_u16(),
-            message: message.into(),
+            message: "Success getting user".into(),
         }),
         code,
-    )
+    ))
 }
 
 #[post("")]
 pub async fn user_create(
-    data: web::Data<AppState>,
+    pool: web::Data<DbPool>,
     body: web::Json<dtos::UserCreateReq>,
-) -> impl Responder {
-    let mut users = data.users.lock().unwrap();
-    services::create_user(
-        &mut users,
-        body.name.to_owned(),
-        body.email.to_owned(),
-        body.password.to_owned(),
-    );
+) -> Result<impl Responder> {
+    let mut conn = pool.get().await.map_err(error::ErrorInternalServerError)?;
+    let user = models::NewUser {
+        name: &body.name,
+        email: &body.email,
+        password: &body.password,
+    };
+
+    let data = services::create_user(&mut conn, &user)
+        .await
+        .map_err(error::ErrorInternalServerError)?;
     let code = http::StatusCode::CREATED;
-    (
-        web::Json(BaseResponse::<Option<String>> {
-            data: None,
+    Ok((
+        web::Json(BaseResponse {
+            data,
             code: code.as_u16(),
             message: "Success creating user".into(),
         }),
         code,
-    )
+    ))
 }
 
 #[delete("/{id}")]
-pub async fn user_delete(data: web::Data<AppState>, path: web::Path<(i64,)>) -> impl Responder {
-    let mut users = data.users.lock().unwrap();
-    let success = services::delete_user(&mut users, path.into_inner().0);
-    let (code, message) = if success {
-        (http::StatusCode::OK, "Success deleting user")
-    } else {
-        (http::StatusCode::BAD_REQUEST, "User not found")
-    };
-    (
-        web::Json(BaseResponse::<Option<String>> {
-            data: None,
+pub async fn user_delete(
+    pool: web::Data<DbPool>,
+    path: web::Path<(i32,)>,
+) -> Result<impl Responder> {
+    let id = path.into_inner().0;
+    let mut conn = pool.get().await.map_err(error::ErrorInternalServerError)?;
+    let data = services::delete_user(&mut conn, id)
+        .await
+        .map_err(error::ErrorInternalServerError)?;
+    let code = http::StatusCode::OK;
+    Ok((
+        web::Json(BaseResponse {
+            data,
             code: code.as_u16(),
-            message: message.into(),
+            message: format!("Success deleting user with id \"{}\"", id),
         }),
         code,
-    )
+    ))
 }
 
 #[patch("/{id}")]
 pub async fn update_user(
-    data: web::Data<AppState>,
-    path: web::Path<(i64,)>,
+    pool: web::Data<DbPool>,
+    path: web::Path<(i32,)>,
     body: web::Json<dtos::UserUpdateReq>,
-) -> impl Responder {
-    let mut users = data.users.lock().unwrap();
-    let result = services::update_user(&mut users, path.into_inner().0, body);
-    let (code, message) = if result {
-        (http::StatusCode::OK, "User Updated")
-    } else {
-        (http::StatusCode::BAD_REQUEST, "User not found")
+) -> Result<impl Responder> {
+    let mut conn = pool.get().await.map_err(error::ErrorInternalServerError)?;
+    let data = models::UpdateUser {
+        name: body.name.as_deref(),
+        password: body.password.as_deref(),
+        email: body.email.as_deref(),
     };
-    (
-        web::Json(BaseResponse::<Option<String>> {
-            data: None,
+    let data = services::update_user(&mut conn, path.into_inner().0, &data)
+        .await
+        .map_err(error::ErrorInternalServerError)?;
+    let code = http::StatusCode::CREATED;
+    Ok((
+        web::Json(BaseResponse {
+            data,
             code: code.as_u16(),
-            message: message.into(),
+            message: "Success Creating user".into(),
         }),
         code,
-    )
+    ))
 }

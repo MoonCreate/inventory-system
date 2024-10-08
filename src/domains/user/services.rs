@@ -1,47 +1,59 @@
-use actix_web::web;
+use crate::structs::models;
+use diesel::prelude::*;
+use diesel_async::{AsyncPgConnection, RunQueryDsl};
 
-use crate::structs::User;
+type DbError = Box<dyn std::error::Error + Send + Sync>;
 
-use super::dtos;
+pub async fn delete_user(conn: &mut AsyncPgConnection, uuid: i32) -> Result<usize, DbError> {
+    use crate::schema::users::dsl::*;
 
-pub fn create_user(users: &mut Vec<User>, name: String, email: String, password: String) {
-    let mut user = User::new();
-    user.set_name(name);
-    user.set_email(email);
-    user.set_password(password);
+    let result = diesel::delete(users.find(uuid)).execute(conn).await?;
 
-    users.push(user);
+    Ok(result)
 }
 
-pub fn get_user(users: &Vec<User>, id: i64) -> Option<User> {
-    let user = users.iter().find(|x| x.id == id);
-    Some(user?.clone())
+pub async fn get_all_user(conn: &mut AsyncPgConnection) -> Result<Vec<models::User>, DbError> {
+    use crate::schema::users::dsl::*;
+
+    let results = users.get_results::<models::User>(conn).await?;
+
+    Ok(results)
 }
 
-pub fn delete_user(users: &mut Vec<User>, id: i64) -> bool {
-    let index = users.iter().position(|x| x.id == id);
-    if let Some(i) = index {
-        users.remove(i);
-        true
-    } else {
-        false
-    }
+pub async fn update_user<'a>(
+    conn: &mut AsyncPgConnection,
+    uuid: i32,
+    data: &models::UpdateUser<'a>,
+) -> Result<usize, DbError> {
+    use crate::schema::users::dsl::*;
+
+    let user = diesel::update(users.find(uuid))
+        .set(data)
+        .execute(conn)
+        .await?;
+
+    Ok(user)
 }
 
-pub fn update_user(users: &mut Vec<User>, id: i64, data: web::Json<dtos::UserUpdateReq>) -> bool {
-    let user = users.iter_mut().find(|x| x.id == id);
-    if let Some(user) = user {
-        if let Some(email) = data.email.to_owned() {
-            user.set_email(email)
-        }
-        if let Some(name) = data.name.to_owned() {
-            user.set_name(name)
-        }
-        if let Some(password) = data.password.to_owned() {
-            user.set_password(password)
-        }
-        true
-    } else {
-        false
-    }
+pub async fn create_user<'a>(
+    conn: &mut AsyncPgConnection,
+    data: &models::NewUser<'a>,
+) -> Result<models::User, DbError> {
+    use crate::schema::users;
+
+    let result = diesel::insert_into(users::table)
+        .values(data)
+        .returning(models::User::as_returning())
+        .get_result(conn)
+        .await?;
+
+    Ok(result)
+}
+
+pub async fn get_user(conn: &mut AsyncPgConnection, uuid: i32) -> Result<models::User, DbError> {
+    use crate::schema::users::dsl::*;
+
+    let user = users.find(uuid).get_result(conn).await?;
+
+    Ok(user)
 }
