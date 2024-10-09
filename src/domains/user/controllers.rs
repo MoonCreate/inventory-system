@@ -1,15 +1,14 @@
 use actix_web::{delete, error, get, http, patch, post, web, Responder, Result};
 
-use crate::structs::State;
-use crate::structs::{models, BaseResponse, DbPool};
+use crate::structs::AppState;
+use crate::structs::{models, BaseResponse};
 
 use super::dtos;
 use super::services;
 
 #[get("/all")]
-pub async fn user_get(state: web::Data<State>) -> Result<impl Responder> {
-    let mut conn = state.get().await.map_err(error::ErrorInternalServerError)?;
-    let data = services::get_all_user(&mut conn)
+pub async fn user_get_controller(state: web::Data<AppState>) -> Result<impl Responder> {
+    let data = services::retrieve_user_all(&state.pool)
         .await
         .map_err(error::ErrorInternalServerError)?;
     let code = http::StatusCode::OK;
@@ -24,12 +23,11 @@ pub async fn user_get(state: web::Data<State>) -> Result<impl Responder> {
 }
 
 #[get("/{id}")]
-pub async fn user_get_by_id(
-    pool: web::Data<DbPool>,
-    path: web::Path<(i32,)>,
+pub async fn user_get_by_id_controller(
+    state: web::Data<AppState>,
+    path: web::Path<(String,)>,
 ) -> Result<impl Responder> {
-    let mut conn = pool.get().await.map_err(error::ErrorInternalServerError)?;
-    let data = services::get_user(&mut conn, path.into_inner().0)
+    let data = services::retrive_user(&state.pool, &path.0)
         .await
         .map_err(error::ErrorInternalServerError)?;
     let code = http::StatusCode::OK;
@@ -44,18 +42,18 @@ pub async fn user_get_by_id(
 }
 
 #[post("")]
-pub async fn user_create(
-    pool: web::Data<DbPool>,
+pub async fn user_create_controller(
+    state: web::Data<AppState>,
     body: web::Json<dtos::UserCreateReq>,
 ) -> Result<impl Responder> {
-    let mut conn = pool.get().await.map_err(error::ErrorInternalServerError)?;
-    let user = models::NewUser {
-        name: &body.name,
+    let user = models::user::UserNew {
+        first_name: &body.first_name,
+        last_name: &body.last_name,
         email: &body.email,
         password: &body.password,
     };
 
-    let data = services::create_user(&mut conn, &user)
+    let data = services::add_user(&state.pool, user)
         .await
         .map_err(error::ErrorInternalServerError)?;
     let code = http::StatusCode::CREATED;
@@ -70,13 +68,11 @@ pub async fn user_create(
 }
 
 #[delete("/{id}")]
-pub async fn user_delete(
-    pool: web::Data<DbPool>,
-    path: web::Path<(i32,)>,
+pub async fn user_delete_controller(
+    state: web::Data<AppState>,
+    path: web::Path<(String,)>,
 ) -> Result<impl Responder> {
-    let id = path.into_inner().0;
-    let mut conn = pool.get().await.map_err(error::ErrorInternalServerError)?;
-    let data = services::delete_user(&mut conn, id)
+    let data = services::delete_user(&state.pool, &path.0)
         .await
         .map_err(error::ErrorInternalServerError)?;
     let code = http::StatusCode::OK;
@@ -84,25 +80,25 @@ pub async fn user_delete(
         web::Json(BaseResponse {
             data,
             code: code.as_u16(),
-            message: format!("Success deleting user with id \"{}\"", id),
+            message: format!("Success deleting user with id \"{}\"", path.0),
         }),
         code,
     ))
 }
 
 #[patch("/{id}")]
-pub async fn update_user(
-    pool: web::Data<DbPool>,
-    path: web::Path<(i32,)>,
+pub async fn update_user_controller(
+    state: web::Data<AppState>,
+    path: web::Path<(String,)>,
     body: web::Json<dtos::UserUpdateReq>,
 ) -> Result<impl Responder> {
-    let mut conn = pool.get().await.map_err(error::ErrorInternalServerError)?;
-    let data = models::UpdateUser {
-        name: body.name.as_deref(),
+    let data = models::user::UserUpdate {
+        first_name: body.first_name.as_deref(),
+        last_name: body.last_name.as_deref(),
         password: body.password.as_deref(),
         email: body.email.as_deref(),
     };
-    let data = services::update_user(&mut conn, path.into_inner().0, &data)
+    let data = services::update_user(&state.pool, &path.0, data)
         .await
         .map_err(error::ErrorInternalServerError)?;
     let code = http::StatusCode::CREATED;

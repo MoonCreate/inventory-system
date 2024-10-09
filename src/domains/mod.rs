@@ -1,8 +1,13 @@
-use actix_web::web;
+use actix_web::{middleware::Logger, web};
 
 mod home;
 mod user;
 
 pub fn config(cfg: &mut web::ServiceConfig) {
-    cfg.configure(user::config).configure(home::config);
+    cfg.service(
+        web::scope("")
+            .wrap(Logger::default())
+            .configure(user::config)
+            .configure(home::config),
+    );
 }

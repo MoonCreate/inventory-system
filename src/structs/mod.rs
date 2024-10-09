@@ -1,16 +1,10 @@
 mod base_response;
-mod user;
+mod state;
 
-pub mod models;
+pub mod models {
+    pub mod user;
+}
 
-use diesel_async::{pooled_connection::deadpool::Pool, AsyncPgConnection};
-
-pub use user::User;
+pub use state::AppState;
 
 pub use base_response::BaseResponse;
-
-pub type DbPool = Pool<AsyncPgConnection>;
-
-pub struct State {
-    pub conn: AsyncPgConnection,
-}
