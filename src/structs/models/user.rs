@@ -1,16 +1,17 @@
+use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
-use sqlx::prelude::FromRow;
+use sqlx::{prelude::FromRow, types::Uuid};
 
 #[derive(Serialize, Deserialize, FromRow)]
 pub struct User {
-    pub id: String,
+    pub id: Uuid,
     pub first_name: String,
     pub last_name: String,
     pub email: String,
     pub email_verified: bool,
     pub password: String,
-    pub created_at: String,
-    pub updated_at: String,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
 }
 
 #[derive(Deserialize)]

@@ -1,4 +1,5 @@
 use actix_web::{delete, error, get, http, patch, post, web, Responder, Result};
+use sqlx::types::Uuid;
 
 use crate::structs::AppState;
 use crate::structs::{models, BaseResponse};
@@ -25,7 +26,7 @@ pub async fn user_get_controller(state: web::Data<AppState>) -> Result<impl Resp
 #[get("/{id}")]
 pub async fn user_get_by_id_controller(
     state: web::Data<AppState>,
-    path: web::Path<(String,)>,
+    path: web::Path<(Uuid,)>,
 ) -> Result<impl Responder> {
     let data = services::retrive_user(&state.pool, &path.0)
         .await
@@ -70,7 +71,7 @@ pub async fn user_create_controller(
 #[delete("/{id}")]
 pub async fn user_delete_controller(
     state: web::Data<AppState>,
-    path: web::Path<(String,)>,
+    path: web::Path<(Uuid,)>,
 ) -> Result<impl Responder> {
     let data = services::delete_user(&state.pool, &path.0)
         .await
@@ -89,7 +90,7 @@ pub async fn user_delete_controller(
 #[patch("/{id}")]
 pub async fn update_user_controller(
     state: web::Data<AppState>,
-    path: web::Path<(String,)>,
+    path: web::Path<(Uuid,)>,
     body: web::Json<dtos::UserUpdateReq>,
 ) -> Result<impl Responder> {
     let data = models::user::UserUpdate {
@@ -101,12 +102,12 @@ pub async fn update_user_controller(
     let data = services::update_user(&state.pool, &path.0, data)
         .await
         .map_err(error::ErrorInternalServerError)?;
-    let code = http::StatusCode::CREATED;
+    let code = http::StatusCode::OK;
     Ok((
         web::Json(BaseResponse {
             data,
             code: code.as_u16(),
-            message: "Success Creating user".into(),
+            message: "Success Updating user".into(),
         }),
         code,
     ))
