@@ -22,5 +22,4 @@ pub struct ProductVariantNew<'a> {
 pub struct ProductVariantUpdate<'a> {
     pub name: Option<&'a str>,
     pub description: Option<&'a str>,
-    pub product_id: Option<Uuid>,
 }

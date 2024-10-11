@@ -2,6 +2,7 @@ use actix_web::{middleware::Logger, web};
 
 mod home;
 mod product;
+mod product_variant;
 mod user;
 
 pub fn config(cfg: &mut web::ServiceConfig) {
@@ -10,6 +11,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .wrap(Logger::default())
             .configure(user::config)
             .configure(home::config)
-            .configure(product::config),
+            .configure(product::config)
+            .configure(product_variant::config),
     );
 }
