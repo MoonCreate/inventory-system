@@ -1,4 +1,4 @@
-use actix_web::{delete, error, get, http, patch, post, web, Responder, Result};
+use actix_web::{delete, get, http, patch, post, web, Responder, Result};
 use sqlx::types::Uuid;
 
 use crate::structs::AppState;
@@ -9,9 +9,7 @@ use super::services;
 
 #[get("/all")]
 pub async fn user_get_controller(state: web::Data<AppState>) -> Result<impl Responder> {
-    let data = services::retrieve_user_all(&state.pool)
-        .await
-        .map_err(error::ErrorInternalServerError)?;
+    let data = services::retrieve_user_all(&state.pool).await?;
     let code = http::StatusCode::OK;
     Ok((
         web::Json(BaseResponse {
@@ -28,9 +26,7 @@ pub async fn user_get_by_id_controller(
     state: web::Data<AppState>,
     path: web::Path<(Uuid,)>,
 ) -> Result<impl Responder> {
-    let data = services::retrive_user(&state.pool, &path.0)
-        .await
-        .map_err(error::ErrorInternalServerError)?;
+    let data = services::retrive_user(&state.pool, &path.0).await?;
     let code = http::StatusCode::OK;
     Ok((
         web::Json(BaseResponse {
@@ -54,9 +50,7 @@ pub async fn user_create_controller(
         password: &body.password,
     };
 
-    let data = services::add_user(&state.pool, user)
-        .await
-        .map_err(error::ErrorInternalServerError)?;
+    let data = services::add_user(&state.pool, user).await?;
     let code = http::StatusCode::CREATED;
     Ok((
         web::Json(BaseResponse {
@@ -73,9 +67,7 @@ pub async fn user_delete_controller(
     state: web::Data<AppState>,
     path: web::Path<(Uuid,)>,
 ) -> Result<impl Responder> {
-    let data = services::delete_user(&state.pool, &path.0)
-        .await
-        .map_err(error::ErrorInternalServerError)?;
+    let data = services::delete_user(&state.pool, &path.0).await?;
     let code = http::StatusCode::OK;
     Ok((
         web::Json(BaseResponse {
@@ -99,9 +91,7 @@ pub async fn update_user_controller(
         password: body.password.as_deref(),
         email: body.email.as_deref(),
     };
-    let data = services::update_user(&state.pool, &path.0, data)
-        .await
-        .map_err(error::ErrorInternalServerError)?;
+    let data = services::update_user(&state.pool, &path.0, data).await?;
     let code = http::StatusCode::OK;
     Ok((
         web::Json(BaseResponse {

@@ -8,6 +8,9 @@ async fn main(
     #[shuttle_runtime::Secrets] _secrets: shuttle_runtime::SecretStore,
     #[shuttle_shared_db::Postgres] pool: sqlx::PgPool,
 ) -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clone + 'static> {
+    std::env::set_var("RUST_LOG", "info");
+    std::env::set_var("RUST_BACKTRACE", "1");
+
     sqlx::migrate!()
         .run(&pool)
         .await

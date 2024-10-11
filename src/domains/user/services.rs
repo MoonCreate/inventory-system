@@ -1,7 +1,10 @@
-use actix_web::{error, Result};
+use actix_web::Result;
 use sqlx::{query, query_as, types::Uuid, PgPool};
 
-use crate::structs::models::user::{User, UserNew, UserUpdate};
+use crate::{
+    errors::UserError,
+    structs::models::user::{User, UserNew, UserUpdate},
+};
 
 pub async fn add_user<'a>(pool: &PgPool, data: UserNew<'a>) -> Result<User> {
     let result = query_as(
@@ -16,7 +19,17 @@ pub async fn add_user<'a>(pool: &PgPool, data: UserNew<'a>) -> Result<User> {
     .bind(data.password)
     .fetch_one(pool)
     .await
-    .map_err(error::ErrorBadRequest)?;
+    .map_err(|e| {
+        log::info!("{}", e);
+        match e {
+            sqlx::Error::Database(e)
+                if e.constraint() == Some("users_email_key") && e.is_unique_violation() =>
+            {
+                UserError::EmailTaken
+            }
+            _ => UserError::InternalError,
+        }
+    })?;
 
     Ok(result)
 }
@@ -26,7 +39,13 @@ pub async fn delete_user(pool: &PgPool, id: &Uuid) -> Result<u64> {
         .bind(id)
         .execute(pool)
         .await
-        .map_err(error::ErrorBadRequest)?;
+        .map_err(|e| {
+            log::info!("{}", e);
+            match e {
+                sqlx::Error::RowNotFound => UserError::NotFound,
+                _ => UserError::InternalError,
+            }
+        })?;
 
     Ok(result.rows_affected())
 }
@@ -48,7 +67,18 @@ pub async fn update_user<'a>(pool: &PgPool, id: &Uuid, data: UserUpdate<'a>) -> 
     .bind(data.password)
     .fetch_one(pool)
     .await
-    .map_err(error::ErrorBadRequest)?;
+    .map_err(|e| {
+        log::info!("{}", e);
+        match e {
+            sqlx::Error::Database(e)
+                if e.constraint() == Some("users_email_key") && e.is_unique_violation() =>
+            {
+                UserError::EmailTaken
+            }
+            sqlx::Error::RowNotFound => UserError::NotFound,
+            _ => UserError::InternalError,
+        }
+    })?;
 
     Ok(result)
 }
@@ -57,17 +87,28 @@ pub async fn retrieve_user_all(pool: &PgPool) -> Result<Vec<User>> {
     let result = query_as("SELECT * FROM users")
         .fetch_all(pool)
         .await
-        .map_err(error::ErrorBadRequest)?;
+        .map_err(|e| {
+            log::info!("{}", e);
+            match e {
+                _ => UserError::InternalError,
+            }
+        })?;
 
     Ok(result)
 }
 
-pub async fn retrive_user(pool: &PgPool, id: &Uuid) -> Result<Option<User>> {
+pub async fn retrive_user(pool: &PgPool, id: &Uuid) -> Result<User> {
     let result = query_as("SELECT * FROM users WHERE id = $1")
         .bind(id)
-        .fetch_optional(pool)
+        .fetch_one(pool)
         .await
-        .map_err(error::ErrorBadRequest)?;
+        .map_err(|e| {
+            log::info!("{}", e);
+            match e {
+                sqlx::Error::RowNotFound => UserError::NotFound,
+                _ => UserError::InternalError,
+            }
+        })?;
 
     Ok(result)
 }
