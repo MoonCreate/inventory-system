@@ -1,6 +1,17 @@
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
-use sqlx::{prelude::FromRow, types::Uuid};
+use sqlx::{
+    prelude::{FromRow, Type},
+    types::Uuid,
+};
+
+#[derive(Serialize, Deserialize, Clone, Copy, Type)]
+#[sqlx(type_name = "user_role")]
+pub enum UserRole {
+    Administrator,
+    Buyer,
+    Seller,
+}
 
 #[derive(Serialize, Deserialize, FromRow)]
 pub struct User {
@@ -12,6 +23,7 @@ pub struct User {
     pub password: String,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
+    pub role: UserRole,
 }
 
 #[derive(Deserialize)]
@@ -28,4 +40,5 @@ pub struct UserUpdate<'a> {
     pub last_name: Option<&'a str>,
     pub email: Option<&'a str>,
     pub password: Option<&'a str>,
+    pub role: Option<UserRole>,
 }

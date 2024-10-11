@@ -56,7 +56,8 @@ pub async fn update_user<'a>(pool: &PgPool, id: &Uuid, data: UserUpdate<'a>) -> 
         SET first_name = COALESCE(NULLIF($2, ''), first_name),
             last_name = COALESCE(NULLIF($3, ''), last_name),
             email = COALESCE(NULLIF($4, ''), email),
-            password = COALESCE(NULLIF($5, ''), password)
+            password = COALESCE(NULLIF($5, ''), password),
+            role = COALESCE(NULLIF($6, ''), role),
         WHERE id = $1
         RETURNING *",
     )
@@ -65,6 +66,7 @@ pub async fn update_user<'a>(pool: &PgPool, id: &Uuid, data: UserUpdate<'a>) -> 
     .bind(data.last_name)
     .bind(data.email)
     .bind(data.password)
+    .bind(data.role)
     .fetch_one(pool)
     .await
     .map_err(|e| {

@@ -90,6 +90,7 @@ pub async fn update_user_controller(
         last_name: body.last_name.as_deref(),
         password: body.password.as_deref(),
         email: body.email.as_deref(),
+        role: body.role,
     };
     let data = services::update_user(&state.pool, &path.0, data).await?;
     let code = http::StatusCode::OK;
