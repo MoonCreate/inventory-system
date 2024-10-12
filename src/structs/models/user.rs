@@ -42,3 +42,9 @@ pub struct UserUpdate<'a> {
     pub password: Option<&'a str>,
     pub role: Option<UserRole>,
 }
+
+impl User {
+    pub fn verify_password(&self, password: &str) -> bcrypt::BcryptResult<bool> {
+        Ok(bcrypt::verify(password, &self.password)?)
+    }
+}

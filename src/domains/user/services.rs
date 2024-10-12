@@ -16,7 +16,7 @@ pub async fn add_user<'a>(pool: &PgPool, data: UserNew<'a>) -> Result<User> {
     .bind(data.first_name)
     .bind(data.last_name)
     .bind(data.email)
-    .bind(data.password)
+    .bind(bcrypt::hash(data.password, bcrypt::DEFAULT_COST).map_err(|_| UserError::InternalError)?)
     .fetch_one(pool)
     .await
     .map_err(|e| {
@@ -65,7 +65,11 @@ pub async fn update_user<'a>(pool: &PgPool, id: &Uuid, data: UserUpdate<'a>) -> 
     .bind(data.first_name)
     .bind(data.last_name)
     .bind(data.email)
-    .bind(data.password)
+    .bind(if let Some(pw) = data.password {
+        Some(bcrypt::hash(pw, bcrypt::DEFAULT_COST).map_err(|_| UserError::InternalError)?)
+    } else {
+        None
+    })
     .bind(data.role)
     .fetch_one(pool)
     .await
