@@ -1,6 +1,13 @@
-use actix_web::web::{Data, ServiceConfig};
+use actix_web::{
+    error::InternalError,
+    web::{Data, JsonConfig, ServiceConfig},
+    HttpResponse,
+};
 
-use inventory_system::{domains, structs::AppState};
+use inventory_system::{
+    domains,
+    structs::{AppState, BaseResponse},
+};
 use shuttle_actix_web::ShuttleActixWeb;
 
 #[shuttle_runtime::main]
@@ -19,7 +26,17 @@ async fn main(
     let state = Data::new(AppState { pool });
 
     let config = move |cfg: &mut ServiceConfig| {
-        cfg.app_data(state).configure(domains::config);
+        cfg.app_data(JsonConfig::default().error_handler(|err, _| {
+            let error_json = BaseResponse {
+                data: "Ewwow".to_owned(),
+                code: 404,
+                message: "Ewwow".into(),
+            };
+            println!("{}", err);
+            InternalError::from_response(err, HttpResponse::Conflict().json(error_json)).into()
+        }))
+        .app_data(state)
+        .configure(domains::config);
     };
 
     Ok(config.into())
